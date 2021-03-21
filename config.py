@@ -38,7 +38,7 @@ class Config():
         self.batch_size = 16
         print('Batch size : ', self.batch_size )
         
-        self.model_shape = 'Single'   #'Single'  # 'Multiple'
+        self.model_shape = 'Multiple'   #'Single'  # 'Multiple'
         print('Model Shape : ', self.model_shape)
 
         self.loss = 'Rec&Tem' # 'Rec', 'Rec&Tem'

@@ -103,10 +103,10 @@ class VirtualCamera(object):
 
                 frame *= self.scale 
 
-                if(id == 1):
+                if(id == 2):
                     temp_frame = frame 
 
-                if(id == 2):
+                if(id == 3):
                     target_frame = frame
                     mask_sat = (np.max(frame, axis=2, keepdims=True) >= (1.0 - self.config.eps))
                     mask_sat = mask_sat.astype(np.float32)

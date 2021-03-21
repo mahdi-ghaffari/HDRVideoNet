@@ -98,14 +98,14 @@ def gen_dataset(config, mode, dump_data=True, read_when_data_exist = False):
 
                     
                     if margin_mode == "NONE":
-                        if scene_len < (2*temp_mem+1):
+                        if scene_len < (2*temp_mem+1 + 1): #TODO: One Extra Frame for Temp
                             # print("The scene {} doesn't have the sufficient frames in this padding mode".format(margin_mode))
                             continue
                         
-                        for _, middle_frame in enumerate(range(temp_mem + perv_idx, scene_len-temp_mem +  perv_idx)):
+                        for _, middle_frame in enumerate(range(temp_mem + 1 + perv_idx, scene_len-temp_mem +  perv_idx)): #TODO: One Extra Frame for Temp
                             # Fullpath of input frames
                             
-                            input_frames = [os.path.join(video_path, 'frames', frame_name) for frame_name in video_frames[(config.down_samp*middle_frame-temp_mem):(config.down_samp*middle_frame+temp_mem+1)]]
+                            input_frames = [os.path.join(video_path, 'frames', frame_name) for frame_name in video_frames[(config.down_samp*middle_frame-temp_mem - 1):(config.down_samp*middle_frame+temp_mem+1)]] #TODO: One Extra Frame for Temp
                             target_frame = os.path.join(video_path, 'frames' , video_frames[config.down_samp*middle_frame]) 
                             temp_frame = []
                             flows = []
@@ -230,25 +230,34 @@ class HDRVideoDataset(data.Dataset):
                     # temp_frame_path = self.data[index]['temp_frame']
                     flows_paths = self.data[index]['flows']
 
-                input_frames = [[]]*self.config.temporal_num
+                input_frames = [[]]*self.config.temporal_num + 1  #TODO: One Extra Frame for Temp
                 if(self.config.model_shape == 'Single'):
-                    input_frames[2] = frame_loader_full_path(self.config , input_frame_paths[2])
+                    input_frames[2] = frame_loader_full_path(self.config , input_frame_paths[3])  #TODO: One Extra Frame for Temp
                     if(self.config.loss == 'Rec&Tem'):
-                        input_frames[1] = frame_loader_full_path(self.config , input_frame_paths[1])
+                        input_frames[1] = frame_loader_full_path(self.config , input_frame_paths[2])  #TODO: One Extra Frame for Temp
 
                 else:
-                    input_frames = sequence_loader_full_path(self.config , input_frame_paths)
+                    input_frames_pluse_one = sequence_loader_full_path(self.config , input_frame_paths)  #TODO: One Extra Frame for Temp
 
                 flows_fw = []
                 flows_bw = []
-                if(self.config.loss == 'Rec&Tem'):
+                if(self.config.loss == 'Rec&Tem'): 
                     flows_fw = flow_loader(self.config, flows_paths[0])
                     # flows_bw = flow_loader(self.config, flows_paths[1])
 
                 # Convert hdr2ldr using VirtualCamera.
-                input_frames, target_frame, temp_frame, mask = self.transform_hdr2ldr(input_frames)
+                input_frames_pluse_one, target_frame, temp_frame, mask = self.transform_hdr2ldr(input_frames_pluse_one)  #TODO: One Extra Frame for Temp
+
+                input_frames = input_frames_pluse_one[1:6]
+                if(self.config.loss == 'Rec&Tem'):   #TODO: One Extra Frame for Temp
+                    input_frames_pre = input_frames_pluse_one[0:5]
 
                 input_frames = seq_to_tensor(input_frames)
+                
+                input_frames_pre = []
+                if(self.config.loss == 'Rec&Tem'):   #TODO: One Extra Frame for Temp
+                    input_frames_pre = seq_to_tensor(input_frames_pre)
+
                 target_frame = to_tensor(target_frame)
 
                 # temp_frame = []
@@ -260,11 +269,12 @@ class HDRVideoDataset(data.Dataset):
 
                 mask = to_tensor(mask)
 
-                return input_frames, target_frame, temp_frame, mask, flows
+                return input_frames,  target_frame, temp_frame, mask, flows, input_frames_pre
 
             else:
                 
                 input_frames = torch.randn(self.config.in_channels, self.config.temporal_num, self.config.frame_size[0], self.config.frame_size[1])
+                input_frames_pre = torch.randn(self.config.in_channels, self.config.temporal_num, self.config.frame_size[0], self.config.frame_size[1])
                 target_frame = torch.randn(self.config.in_channels, self.config.frame_size[0], self.config.frame_size[1])
                 temp_frame = torch.randn(self.config.in_channels, self.config.frame_size[0], self.config.frame_size[1])
                 
@@ -275,7 +285,7 @@ class HDRVideoDataset(data.Dataset):
                 mask = torch.randn(1, self.config.frame_size[0], self.config.frame_size[1])
 
 
-            return input_frames, target_frame, temp_frame, mask, flows 
+            return input_frames, target_frame, temp_frame, mask, flows, input_frames_pre
         
         elif state == 'Inference':
             

@@ -30,7 +30,7 @@ def train_epoch(epoch, model, config, train_loader, criterion, optimizer):
     # gauss_conv = gauss_conv_gen()
     # gauss_conv = gauss_conv.to(config.device)
 
-    for _ , (inputs, target, temp, mask_rec, flows) in enumerate(t):
+    for _ , (inputs, target, temp, mask_rec, flows, inputs_pre) in enumerate(t):
         
 
         if(config.model_shape == 'Multiple'):
@@ -65,18 +65,27 @@ def train_epoch(epoch, model, config, train_loader, criterion, optimizer):
 
 
         if(config.loss == 'Rec&Tem'):
-            temp = temp.to(config.device)
-            temp_warped = warp(temp, flow_fw)
-            input_pre = inputs[:,:,1,:,:].to(config.device)
-            input_pre_wrp =  warp(input_pre, flow_fw)
-            mask = torch.exp(-50*torch.norm((input -
-                            input_pre_wrp), dim=1, keepdim=True))
-            mask = torch.cat((mask, mask, mask), dim = 1)
-            temp_warped[temp_warped < 0] = 0.0
-            temp_warped_ill = torch.mul(temp_warped, mask_rec)
-            loss_tem = criterion(output_ill, temp_warped_ill)
-            # loss_tem = criterion(mask*output_ill, mask*temp_warped_ill)
 
+            temp = inputs[:,:,1,:,:].to(config.device)
+            temp =  warp(temp, flow_fw)
+            mask = torch.exp(-50*torch.norm((input -
+                            temp), dim=1, keepdim=True))
+            mask = torch.cat((mask, mask, mask), dim = 1)
+
+            if(config.model_shape == 'Multiple'):
+                inputs_pre = inputs_pre.to(config.device)
+                output_pre_net = model(inputs_pre)
+                output_pre = torch.add(output_pre_net, inputs_pre[:,:,2,:,:])
+                output_pre_warped = warp(output_pre, flow_fw)
+            else:
+                input_pre = inputs_pre[:,:,2,:,:].to(config.device)
+                output_pre_net = model(input_pre)
+                output_pre = torch.add(output_pre_net, input_pre)
+                output_pre_warped = warp(output_pre, flow_fw)
+
+            output_pre_warped[output_pre_warped < 0] = 0.0
+            output_pre_warped_ill = torch.mul(output_pre_warped, mask_rec)
+            loss_tem = criterion(output_ill, output_pre_warped_ill)
 
 
         loss_rec = criterion(output_ill, target_ill)

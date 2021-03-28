@@ -35,7 +35,7 @@ class Config():
         self.num_epochs = 20
         print('Epochs : ', self.num_epochs)
    
-        self.batch_size = 16
+        self.batch_size = 8
         print('Batch size : ', self.batch_size )
         
         self.model_shape = 'Multiple'   #'Single'  # 'Multiple'

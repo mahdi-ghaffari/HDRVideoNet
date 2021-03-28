@@ -230,7 +230,7 @@ class HDRVideoDataset(data.Dataset):
                     # temp_frame_path = self.data[index]['temp_frame']
                     flows_paths = self.data[index]['flows']
 
-                input_frames = [[]]*self.config.temporal_num + 1  #TODO: One Extra Frame for Temp
+                input_frames = [[]]*(self.config.temporal_num + 1)  #TODO: One Extra Frame for Temp
                 if(self.config.model_shape == 'Single'):
                     input_frames[2] = frame_loader_full_path(self.config , input_frame_paths[3])  #TODO: One Extra Frame for Temp
                     if(self.config.loss == 'Rec&Tem'):

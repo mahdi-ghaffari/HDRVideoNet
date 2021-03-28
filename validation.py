@@ -61,7 +61,7 @@ def validation_epoch(epoch, model, config, validation_loader, criterion):
             temp =  warp(temp, flow_fw)
             mask = torch.exp(-50*torch.norm((input -
                             temp), dim=1, keepdim=True))
-            mask = torch.cat((mask, mask, mask), dim = 1)
+            mask_tem = torch.cat((mask, mask, mask), dim = 1)
 
             if(config.model_shape == 'Multiple'):
                 inputs_pre = inputs_pre.to(config.device)
@@ -76,7 +76,7 @@ def validation_epoch(epoch, model, config, validation_loader, criterion):
 
             output_pre_warped[output_pre_warped < 0] = 0.0
             output_pre_warped_ill = torch.mul(output_pre_warped, mask_rec)
-            loss_tem = criterion(output_ill, output_pre_warped_ill)
+            loss_tem = criterion(torch.mul(mask_tem,output_ill), torch.mul(mask_tem,output_pre_warped_ill))
 
 
         loss_rec = criterion(output_ill, target_ill)

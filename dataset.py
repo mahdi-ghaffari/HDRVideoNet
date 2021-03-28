@@ -80,7 +80,7 @@ def gen_dataset(config, mode, dump_data=True, read_when_data_exist = False):
             video_flows_bw = []
             if(config.loss == 'Rec&Tem'):
                 video_flows_fw = sorted(os.listdir(os.path.join(path, video_name, 'flows', 'foreward')))
-                video_flows_bw = sorted(os.listdir(os.path.join(path, video_name, 'flows', 'backward')))
+                # video_flows_bw = sorted(os.listdir(os.path.join(path, video_name, 'flows', 'backward')))
 
             scene_num = int(video_frames[0].split('_')[0][1:])
             perv_idx = 0
@@ -98,24 +98,25 @@ def gen_dataset(config, mode, dump_data=True, read_when_data_exist = False):
 
                     
                     if margin_mode == "NONE":
-                        if scene_len < (2*temp_mem+1 + 1): #TODO: One Extra Frame for Temp
-                            # print("The scene {} doesn't have the sufficient frames in this padding mode".format(margin_mode))
+                                                
+                        if scene_len < 1:
                             continue
-                        
-                        for _, middle_frame in enumerate(range(temp_mem + 1 + perv_idx, scene_len-temp_mem +  perv_idx)): #TODO: One Extra Frame for Temp
+
+                        for _, middle_frame in enumerate(range(perv_idx, scene_len +  perv_idx)): #TODO: One Extra Frame for Temp
                             # Fullpath of input frames
                             
-                            input_frames = [os.path.join(video_path, 'frames', frame_name) for frame_name in video_frames[(config.down_samp*middle_frame-temp_mem - 1):(config.down_samp*middle_frame+temp_mem+1)]] #TODO: One Extra Frame for Temp
-                            target_frame = os.path.join(video_path, 'frames' , video_frames[config.down_samp*middle_frame]) 
+                            input_frames = [os.path.join(video_path, 'frames', frame_name) for frame_name in video_frames[(config.down_samp*middle_frame + (config.down_samp//2) -temp_mem - 1):(config.down_samp*middle_frame + (config.down_samp//2) +temp_mem+1)]] #TODO: One Extra Frame for Temp
+                            target_frame = os.path.join(video_path, 'frames' , video_frames[config.down_samp*middle_frame + (config.down_samp//2)]) 
                             temp_frame = []
                             flows = []
 
                             if(config.loss == 'Rec&Tem'):
-                                temp_frame   = os.path.join(video_path, 'frames' , video_frames[config.down_samp*middle_frame-1]) 
+                                temp_frame   = os.path.join(video_path, 'frames' , video_frames[config.down_samp*middle_frame + (config.down_samp//2) -1]) 
                                 
                                 # this include both forward and backward flows indexis should be done modulo 2
-                                flow_fw = os.path.join(path, video_name, 'flows', 'foreward', video_flows_fw[config.down_samp*middle_frame-1])
-                                flow_bw = os.path.join(path, video_name, 'flows', 'backward', video_flows_bw[config.down_samp*middle_frame])
+                                flow_fw = os.path.join(path, video_name, 'flows', 'foreward', video_flows_fw[config.down_samp*middle_frame + (config.down_samp//2) -1])
+                                flow_bw = []
+                                # flow_bw = os.path.join(path, video_name, 'flows', 'backward', video_flows_bw[config.down_samp*middle_frame])
                                 
                                 flows = [flow_fw, flow_bw]
 
@@ -230,11 +231,11 @@ class HDRVideoDataset(data.Dataset):
                     # temp_frame_path = self.data[index]['temp_frame']
                     flows_paths = self.data[index]['flows']
 
-                input_frames = [[]]*(self.config.temporal_num + 1)  #TODO: One Extra Frame for Temp
+                input_frames_pluse_one = [[]]*(self.config.temporal_num + 1)  #TODO: One Extra Frame for Temp
                 if(self.config.model_shape == 'Single'):
-                    input_frames[2] = frame_loader_full_path(self.config , input_frame_paths[3])  #TODO: One Extra Frame for Temp
+                    input_frames_pluse_one[3] = frame_loader_full_path(self.config , input_frame_paths[3])  #TODO: One Extra Frame for Temp
                     if(self.config.loss == 'Rec&Tem'):
-                        input_frames[1] = frame_loader_full_path(self.config , input_frame_paths[2])  #TODO: One Extra Frame for Temp
+                        input_frames_pluse_one[2] = frame_loader_full_path(self.config , input_frame_paths[2])  #TODO: One Extra Frame for Temp
 
                 else:
                     input_frames_pluse_one = sequence_loader_full_path(self.config , input_frame_paths)  #TODO: One Extra Frame for Temp

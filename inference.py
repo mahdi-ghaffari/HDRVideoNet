@@ -1,16 +1,9 @@
-import warnings
 import torch
-from torch.autograd import Variable
-import sys
 import os
-from utils import warp 
 from tqdm import tqdm
-from utils import warp, detect_occlusion
+from utils import warp
 import cv2
 import numpy as np
-import warnings
-
-from tools.img_io import writeEXR
 
 
 def inference(config, model, test_loader, criterion):
@@ -67,15 +60,13 @@ def inference(config, model, test_loader, criterion):
 
             output = output / max_val
 
-            # output_mod = (output*(2**16 - 1)).astype('uint16')
-            output_mod = output
-            warnings.warn('!!!')
+            output_mod = (output*(2**16 - 1)).astype('uint16')
+
 
             for b in range(batch_size_mod):
                 output_file_name = os.path.join(output_name[b])
                 print(output_file_name)
-                # cv2.imwrite(output_file_name, output_mod[b, :, :, :])
-                writeEXR(output_mod[b, :, :, :], output_file_name[:-4] + 'exr')
-        
+                cv2.imwrite(output_file_name, output_mod[b, :, :, :])
+                       
         print('Loss :',loss_rec_sum/loss_cnt)
 

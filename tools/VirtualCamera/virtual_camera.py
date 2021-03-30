@@ -1,7 +1,5 @@
 import numpy as np 
-import os, sys
 import cv2
-import torch
 from torchvision import transforms
 import random
 from utils import gaussian_kernel, sequence_loader_full_path, frame_loader_full_path
@@ -88,11 +86,10 @@ class VirtualCamera(object):
 
             ldr_frames = []
 
-            i = hdr_frames[2]
+            i = hdr_frames[3]
             
             self._scale_find_single(i)
 
-            temp_frame = None
             target_frame = None
 
             for id, frame in enumerate(hdr_frames):
@@ -102,9 +99,6 @@ class VirtualCamera(object):
                     continue
 
                 frame *= self.scale 
-
-                if(id == 2):
-                    temp_frame = frame 
 
                 if(id == 3):
                     target_frame = frame
@@ -119,7 +113,7 @@ class VirtualCamera(object):
             
                 ldr_frames.append(frame.astype(np.float32))
             
-            return ldr_frames, target_frame, temp_frame, mask_sat
+            return ldr_frames, target_frame, mask_sat
 
         elif (self.action == 'scene_based'):
 

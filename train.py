@@ -1,23 +1,16 @@
 ### python lib
-import os, sys, random, math, cv2, pickle, subprocess
-import numpy as np
 from tqdm import tqdm
 
 ### pytorch lib
 import torch
-import torch.nn.functional as F
-from torch.autograd import Variable
 
 ### custom lib
-from utils import warp, detect_occlusion, gauss_conv_gen
+from utils import warp
 
-
-def train_epoch(epoch, model, config, train_loader, criterion, optimizer):
-
+def train_epoch(model, config, train_loader, criterion, optimizer):
    
     model.train()
     
-
     loss_rec_sum = 0.0
     loss_tem_sum = 0.0
     loss_sum = 0.0
@@ -30,7 +23,7 @@ def train_epoch(epoch, model, config, train_loader, criterion, optimizer):
     # gauss_conv = gauss_conv_gen()
     # gauss_conv = gauss_conv.to(config.device)
 
-    for _ , (inputs, target, temp, mask_rec, flows, inputs_pre) in enumerate(t):
+    for _ , (inputs, target, mask_rec, flows, inputs_pre) in enumerate(t):
         
 
         if(config.model_shape == 'Multiple'):
@@ -96,7 +89,6 @@ def train_epoch(epoch, model, config, train_loader, criterion, optimizer):
 
         loss_msg[0] =  loss_rec.item() 
         loss_msg[1] =  0
-
         if(config.loss == 'Rec&Tem'):
             loss_msg[1] = loss_tem.item()
 
@@ -107,15 +99,15 @@ def train_epoch(epoch, model, config, train_loader, criterion, optimizer):
         loss_sum     += loss.item()
         loss_cnt     += 1
 
+        message = 'loss rec : {:.4f}, loss tem : {:.4f} '.format(loss_msg[0], loss_msg[1])
+
+        t.set_description(message)
+
         optimizer.zero_grad()
 
         loss.backward()
 
         optimizer.step()
-
-        message = 'loss rec : {:.4f}, loss tem : {:.4f} '.format(loss_msg[0], loss_msg[1])
-
-        t.set_description(message)
     
     train_loss = [loss_rec_sum/loss_cnt]
     if(config.loss == 'Rec&Tem'):

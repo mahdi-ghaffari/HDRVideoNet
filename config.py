@@ -6,7 +6,6 @@ class Config():
 
     def __init__(self):
     
-
         self.root = '/mnt/db/Dataset/' 
         print('Dataset : ', self.root)
 
@@ -19,24 +18,23 @@ class Config():
         self.pretrain = False
         print('pretrain : ', self.pretrain )
 
-        if (self.state == 'Train') and self.pretrain:
-            pass
-            
-
-        elif self.state == 'Inference':
-            pass
-
-        self.debug = False
-        print('Debug: ', self.debug)
-
-        if(self.debug):
-            self.debug_num_samples = 4*16
-
         self.num_epochs = 20
         print('Epochs : ', self.num_epochs)
    
         self.batch_size = 8
         print('Batch size : ', self.batch_size )
+
+        self.debug = False
+        print('Debug: ', self.debug)
+
+        if (self.state == 'Train') and self.pretrain:
+            pass   
+
+        elif self.state == 'Inference':
+            pass
+
+        if(self.debug):
+            self.debug_num_samples = self.batch_size*16
         
         self.model_shape = 'Multiple'   #'Single'  # 'Multiple'
         print('Model Shape : ', self.model_shape)
@@ -58,13 +56,14 @@ class Config():
         self.frame_size = (360, 640) #(Height, Width)
         print('frame size: ', self.frame_size)
 
+        self.data_split_ratio = 0.75
+        print('data split ratio: ', self.data_split_ratio)
+
         self.num_workers = 4
 
         self.temporal_num = 5
 
         self.alpha = 0.8
-
-        self.margin_mode = "NONE"
 
         self.hdr_format = "tiff"
 
@@ -75,7 +74,8 @@ class Config():
         print('device: ', self.device)
 
         self.eps = 1/(2**16 -1)
-        print('####################################################')
+
+        print('########################################################################################################')
         
 
 

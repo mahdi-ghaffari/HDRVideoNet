@@ -1,11 +1,13 @@
-import torch
-from torch.autograd import Variable
-import sys
-from utils import warp 
+### python lib
 from tqdm import tqdm
-from utils import warp, detect_occlusion, gauss_conv_gen
 
-def validation_epoch(epoch, model, config, validation_loader, criterion):
+### pytorch lib
+import torch
+
+### custom lib
+from utils import warp
+
+def validation_epoch(model, config, validation_loader, criterion):
 
     model.eval()
 
@@ -21,7 +23,7 @@ def validation_epoch(epoch, model, config, validation_loader, criterion):
     # gauss_conv = gauss_conv_gen()
     # gauss_conv = gauss_conv.to(config.device)
 
-    for _ , (inputs, target, temp, mask_rec, flows, inputs_pre) in enumerate(t):
+    for _ , (inputs, target, mask_rec, flows, inputs_pre) in enumerate(t):
         
 
         if(config.model_shape == 'Multiple'):
@@ -85,27 +87,26 @@ def validation_epoch(epoch, model, config, validation_loader, criterion):
             loss = torch.add(loss , config.alpha*loss_tem)
             pass
 
-        loss_rec_sum += loss_rec.item()
-        if(config.loss == 'Rec&Tem'):
-            loss_tem_sum += loss_tem.item()
-        
-        loss_sum     += loss.item()
-        loss_cnt     += 1
-
-
         loss_msg[0] =  loss_rec.item() 
         loss_msg[1] =  0
         if(config.loss == 'Rec&Tem'):
             loss_msg[1] = loss_tem.item()
 
+    
+        loss_rec_sum += loss_rec.item()
+        if(config.loss == 'Rec&Tem'):
+            loss_tem_sum += loss_tem.item()
+        loss_sum     += loss.item()
+        loss_cnt     += 1
+
         message = 'loss rec : {:.4f}, loss tem : {:.4f} '.format(loss_msg[0], loss_msg[1])
 
-        t.set_description(message)            
+        t.set_description(message)
+           
     
     validation_loss = [loss_rec_sum/loss_cnt]
     if(config.loss == 'Rec&Tem'):
         validation_loss.append(loss_tem_sum/loss_cnt)
         validation_loss.append(loss_sum/loss_cnt)
 
-    return validation_loss
-    
+    return validation_loss    

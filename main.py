@@ -1,5 +1,5 @@
 ### python libraries
-import os, sys, random, math, cv2, pickle, subprocess, json
+import os
 import numpy as np
 import warnings
 warnings.simplefilter('ignore')
@@ -26,9 +26,7 @@ if __name__ == '__main__':
     
     state = config.state
 
-
     if(state == 'Train'):
-        # This will store tensorboard data in cwd/runs path. The default wall time is set to time.time() accuracy
         writer = SummaryWriter()
 
         if (config.pretrain):
@@ -68,10 +66,10 @@ if __name__ == '__main__':
             
             print('=======================================Epoch No : {}/{}========================================='.format(epoch, config.num_epochs))
             
-            train_loss      = train_epoch(epoch, model, config, train_loader, criterion, optimizer)
+            train_loss      = train_epoch(model, config, train_loader, criterion, optimizer)
 
             if(config.validation):
-                validation_loss = validation_epoch(epoch, model, config, validation_loader, criterion)
+                validation_loss = validation_epoch(model, config, validation_loader, criterion)
             
             writer.add_scalar("Loss_reconstruction/Train", train_loss[0], epoch)
             if(config.loss == 'Rec&Tem'):

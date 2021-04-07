@@ -102,9 +102,9 @@ class VirtualCamera(object):
 
                 if(id == 3):
                     target_frame = frame
-                    mask_sat = (np.max(frame, axis=2, keepdims=True) >= (1.0 - self.config.eps))
-                    mask_sat = mask_sat.astype(np.float32)
-                  
+                    mask = (np.max(frame, axis=2, keepdims=True) >= (1.0 - self.config.eps))
+                    mask = mask.astype(np.float32)
+                    mask = np.tile(mask, (1, 1, 3))
 
                 frame[frame > 1.0] = 1.0     # extreme value saturation                
 
@@ -113,7 +113,7 @@ class VirtualCamera(object):
             
                 ldr_frames.append(frame.astype(np.float32))
             
-            return ldr_frames, target_frame, mask_sat
+            return ldr_frames, target_frame, mask
 
         elif (self.action == 'scene_based'):
 
@@ -140,11 +140,10 @@ class VirtualCamera(object):
                     frame_n = frame**n
                     frame = (1.0 + sigma) * np.multiply(frame_n, 1.0/(frame_n + sigma))   # Apply camera curve
                     
-                    frame_mod = (frame*(2**8 - 1)).astype('uint8')                  
-                    mask_mod  = (mask*(2**8 - 1)).astype('uint8') 
+                    frame = (frame*(2**8 - 1)).astype('uint8')                  
+                    mask  = (mask*(2**8 - 1)).astype('uint8') 
 
-                    
-                    cv2.imwrite(frame_name.split('.')[0].replace('frames', 'input') + '.png', frame_mod)
-                    cv2.imwrite(frame_name.split('.')[0].replace('frames', 'mask') + '.png', mask_mod)
+                    cv2.imwrite(frame_name.split('.')[0].replace('frames', 'input') + '.png', frame)
+                    cv2.imwrite(frame_name.split('.')[0].replace('frames', 'mask') + '.png', mask)
                     print(frame_name)
                     

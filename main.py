@@ -13,10 +13,10 @@ from torch.utils.tensorboard.writer import SummaryWriter
 ### custom libraries
 from model import Model, Model_single
 from config import Config
-from dataset import get_data, inference_dataset_prepare
+from dataset import get_data
 from train import train_epoch
 from validation import validation_epoch
-from inference import inference
+from inference import inference, inference_dataset_prepare
 from utils import current_time_str
 from video import ground_truth_video, hdr_video_make, ldr_video_make
 
@@ -99,7 +99,6 @@ if __name__ == '__main__':
         torch.save(model, model_name)
     
     elif(state == 'Inference'):
-        
 
         model = torch.load(os.path.join(config.root_model_path, config.model_name))
         model.to(config.device)
@@ -107,7 +106,6 @@ if __name__ == '__main__':
         criterion = nn.L1Loss()
         criterion = criterion.to(config.device)
 
-        #preparing inference dataset
         inference_dataset_prepare(config)
 
         test_data =  get_data(config, mode='inference')
@@ -125,8 +123,6 @@ if __name__ == '__main__':
         print('HDR Video is ready!')
 
         ldr_video_make(config)
-
-
              
     else:
         print('State is Wrong!')

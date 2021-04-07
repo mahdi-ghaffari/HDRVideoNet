@@ -58,7 +58,7 @@ def to_tensor(frame):
     return tensor
 
 def seq_to_tensor(sequence):
-    sequence_tensor = [torch.zeros(3, 360, 640)]* 5
+    sequence_tensor = [torch.zeros(3, 360, 640)]* len(sequence)
     for i, seq in enumerate(sequence):
         if(seq == []):
             continue

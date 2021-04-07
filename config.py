@@ -18,6 +18,9 @@ class Config():
         self.pretrain = False
         print('pretrain : ', self.pretrain )
 
+        self.model_shape = 'Single'   #'Single'  # 'Multiple'
+        print('Model Shape : ', self.model_shape)
+        
         self.num_epochs = 20
         print('Epochs : ', self.num_epochs)
    
@@ -28,16 +31,15 @@ class Config():
         print('Debug: ', self.debug)
 
         if (self.state == 'Train') and self.pretrain:
+            self.model_name = ""
             pass   
 
         elif self.state == 'Inference':
+            self.model_name = ""
             pass
 
         if(self.debug):
             self.debug_num_samples = self.batch_size*16
-        
-        self.model_shape = 'Multiple'   #'Single'  # 'Multiple'
-        print('Model Shape : ', self.model_shape)
 
         self.loss = 'Rec&Tem' # 'Rec', 'Rec&Tem'
         print('Loss Type: ', self.loss)

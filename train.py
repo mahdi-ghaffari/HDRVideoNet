@@ -42,7 +42,6 @@ def train_epoch(model, config, train_loader, criterion, optimizer):
         
         mask_rec = mask_rec.to(config.device)
         # mask_rec = gauss_conv(mask_rec)
-        mask_rec = torch.cat((mask_rec, mask_rec, mask_rec), dim=1)
 
         output[output < 0] = 0.0
         target[target < 0] = 0.0

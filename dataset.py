@@ -17,7 +17,7 @@ def get_data(config, mode, options=None):
 def load_dataset(config, mode, dump_data=True, read_when_data_exist=False):
 
     if config.debug:
-        return []
+        return [[]] * config.debug_num_samples
 
     state = config.state
 
@@ -67,7 +67,7 @@ def load_dataset(config, mode, dump_data=True, read_when_data_exist=False):
 
             for idx, video_frame in enumerate(video_frames):  
 
-                if not (int(video_frame.split("_")[0][1:]) == scene_num):   
+                if ((not(int(video_frame.split("_")[0][1:]) == scene_num)) or (idx == (len(video_frames)-1))):   
                     scene_num += 1 
                     video_path = os.path.join(path, video_name) 
                     scene_len = (idx - perv_idx)                    
@@ -101,33 +101,46 @@ def load_dataset(config, mode, dump_data=True, read_when_data_exist=False):
             video_frames = sorted(os.listdir(os.path.join(path, video_name, 'frames')))
             video_frames_input = sorted(os.listdir(os.path.join(path, video_name, 'input')))
             
+            video_flows_fw = []
+            video_flows_bw = []
+            if(config.loss == 'Rec&Tem'):
+                video_flows_fw = sorted(os.listdir(os.path.join(path, video_name, 'flows', 'foreward')))
+                # video_flows_bw = sorted(os.listdir(os.path.join(path, video_name, 'flows', 'backward')))
+
             scene_num = int(video_frames[0].split('_')[0][1:])
             perv_idx = 0
+            
+            video_path = os.path.join(path, video_name) 
 
             for idx, video_frame in enumerate(video_frames):  
                 
-                if ((not(int(video_frame.split("_")[0][1:]) == scene_num)) or
-                   (int(video_frames[0].split('_')[0][1:]) == int(video_frames[-1].split('_')[0][1:]))):   
+                if ((not(int(video_frame.split("_")[0][1:]) == scene_num)) or (idx == (len(video_frames)-1))):   
                     scene_num += 1 
-                    video_path = os.path.join(path, video_name) 
-                    scene_len = idx- perv_idx
-
-                    
+                    scene_len = idx- perv_idx                    
                    
-                    if scene_len < (2*temp_mem+1):
-                        # print("The scene {} doesn't have the sufficient frames in this padding mode".format(scene_num))
+                    if scene_len < (temporal_num + 1):
                         continue
                     
-                    for _, middle_frame in enumerate(range(temp_mem + perv_idx, scene_len-temp_mem +  perv_idx)):
+                    for _, middle_frame in enumerate(range(perv_idx + temp_mem + 1, idx-temp_mem)):
                         # Fullpath of input frames
-                        input_frames = [os.path.join(video_path, 'input', frame_name) for frame_name in video_frames_input[(middle_frame-temp_mem):(middle_frame+temp_mem+1)]]
-                        mask_frames = [os.path.join(video_path, 'mask', frame_name) for frame_name in video_frames_input[(middle_frame-temp_mem):(middle_frame+temp_mem+1)]]
-                        output_name = os.path.join(path, video_name, video_frames_input[middle_frame].split('.')[0] + '.tiff')
+                        input_frames = [os.path.join(video_path, 'input', frame_name) for frame_name in video_frames_input[(middle_frame-temp_mem-1):(middle_frame+temp_mem+1)]]
+                        mask = os.path.join(video_path, 'mask', video_frames_input[middle_frame])
+                        output_file_name  = os.path.join(path, video_name, 'output', video_frames_input[middle_frame].split('.')[0] + '.tiff')
                         target_frame = os.path.join(video_path, 'frames', video_frames[middle_frame])
+
+                        flows = []
+                        if(config.loss == 'Rec&Tem'):
+                            # this include both forward and backward flows indexis should be done modulo 2
+                            flow_fw = os.path.join(path, video_name, 'flows', 'foreward', video_flows_fw[middle_frame - 1])
+                            flow_bw = []
+                            # flow_bw = os.path.join(path, video_name, 'flows', 'backward', video_flows_bw[config.down_samp*middle_frame])
+                            flows = [flow_fw, flow_bw]
+
                         data.append({'input_frames': input_frames,
-                                        'mask_frames': mask_frames,
-                                        'output_name' : output_name,
-                                        'target_frame': target_frame})
+                                     'mask'  : mask,
+                                     'output_file_name' : output_file_name,
+                                     'target_frame': target_frame,
+                                     'flows'       : flows})
                             
                     perv_idx = idx
                   
@@ -166,7 +179,6 @@ class HDRVideoDataset(data.Dataset):
                     input_frames_pluse_one[3] = frame_loader_full_path(self.config , input_frame_paths[3])  
                     if(self.config.loss == 'Rec&Tem'):
                         input_frames_pluse_one[2] = frame_loader_full_path(self.config , input_frame_paths[2])  
-
                 else:
                     input_frames_pluse_one = sequence_loader_full_path(self.config , input_frame_paths)  
 
@@ -195,8 +207,6 @@ class HDRVideoDataset(data.Dataset):
 
                 mask = to_tensor(mask)
 
-                return input_frames, target_frame, mask, flows, input_frames_pre
-
             else:
                 
                 input_frames = torch.randn(self.config.in_channels, self.config.temporal_num, self.config.frame_size[0], self.config.frame_size[1])
@@ -216,94 +226,55 @@ class HDRVideoDataset(data.Dataset):
             
             if not self.config.debug:
                 input_frame_paths = self.data[index]['input_frames']
-                mask_frame_paths = self.data[index]['mask_frames']
-                target_frame_pathes = self.data[index]['target_frame']
-                input_frames = sequence_loader_full_path(self.config , input_frame_paths)   
-                mask_frames = sequence_loader_full_path(self.config , mask_frame_paths)              
-                input_frames = seq_to_tensor(input_frames)
-                mask_frames = seq_to_tensor(mask_frames)
+                mask_paths = self.data[index]['mask']
+                target_frame_paths = self.data[index]['target_frame']
+                flows_paths = self.data[index]['flows']
                 
-                output_name = self.data[index]['output_name']
+                input_frames_pluse_one = [[]]*(self.config.temporal_num + 1)
+                if(self.config.model_shape == 'Single'):
+                    input_frames_pluse_one[3] = frame_loader_full_path(self.config , input_frame_paths[3]) 
+                    if(self.config.loss == 'Rec&Tem'):
+                        input_frames_pluse_one[2] = frame_loader_full_path(self.config , input_frame_paths[2])
+                else:
+                    input_frames_pluse_one = sequence_loader_full_path(self.config , input_frame_paths)  
 
-                target_frame = frame_loader_full_path(self.config , target_frame_pathes)
+                input_frames = input_frames_pluse_one[1:6]
+                input_frames = seq_to_tensor(input_frames)
+
+                input_frames_pre = []
+                if(self.config.loss == 'Rec&Tem'):   
+                    input_frames_pre = input_frames_pluse_one[0:5]
+                    input_frames_pre = seq_to_tensor(input_frames_pre)                    
+
+                mask = frame_loader_full_path(self.config , mask_paths)
+                mask = to_tensor(mask)
+                
+                output_file_name = self.data[index]['output_file_name']
+
+                target_frame = frame_loader_full_path(self.config , target_frame_paths)
                 target_frame = to_tensor(target_frame)
+
+                flows = []
+                if(self.config.loss == 'Rec&Tem'):
+                    flows_fw = flow_loader(self.config, flows_paths[0])
+                    # flows_bw = flow_loader(self.config, flows_paths[1])
+                    flows = [flows_fw, []]
+
             else:
-                input_frames = torch.randn(self.config.in_channels, self.config.temporal_num, self.config.frame_size[0], self.config.frame_size[1])
-                mask_frames = torch.randn(self.config.in_channels, self.config.temporal_num, self.config.frame_size[0], self.config.frame_size[1])
-                output_name  = os.path.join(self.config.root, 'inference', 'Video1', 'output', 'DEBUG.tiff')
+                input_frames = torch.randn(self.config.in_channels, self.config.temporal_num , self.config.frame_size[0], self.config.frame_size[1])
+                input_frames_pre = torch.randn(self.config.in_channels, self.config.temporal_num , self.config.frame_size[0], self.config.frame_size[1])
+                mask = torch.randn(self.config.in_channels , self.config.frame_size[0], self.config.frame_size[1])
+                output_file_name  = os.path.join(self.config.root, 'Inference', 'Video1', 'output', 'DEBUG.tiff')
                 target_frame = torch.randn(self.config.in_channels, self.config.temporal_num, self.config.frame_size[0], self.config.frame_size[1])
-            return input_frames, mask_frames, output_name, target_frame
-            
+                
+                flow_fw  = torch.randn(2, self.config.frame_size[0], self.config.frame_size[1])
+                flow_bw  = []
+                flows = [flow_fw, flow_bw]
+
+            return input_frames, target_frame, mask, flows, input_frames_pre, output_file_name
             
         else:
             print('Error!')
             sys.exit(1)
-        
-    
     def __len__(self):
         return len(self.data)
-
-
-
-def inference_dataset_prepare(config):
-
-    path = os.path.join(config.root, 'inference')
-
-    videos_name = os.listdir(path)
-    num_of_videos = len(videos_name)
-
-    virtual_camera = VirtualCamera(config, action='scene_based')
-
-    for idx_v, video_name in enumerate(videos_name): 
-        # print("[{}/{}]Processing {} File".format(idx_v+1, num_of_videos, video_name))
-        if not os.path.exists(os.path.join(path, video_name, 'frames')): 
-            # print("{} data are not Consistent, Moving to the Next Video".format(video_name))
-            continue
-
-        video_frames = sorted(os.listdir(os.path.join(path, video_name, 'frames')))
-
-        if not os.path.exists(os.path.join(path, video_name, 'input')):
-            os.makedirs(os.path.join(path, video_name, 'input'))
-
-        if not os.path.exists(os.path.join(path, video_name, 'mask')):
-            os.makedirs(os.path.join(path, video_name, 'mask'))
-        
-        if not os.path.exists(os.path.join(path, video_name, 'output')):
-            os.makedirs(os.path.join(path, video_name, 'output'))
-
-        scene_num = int(video_frames[0].split('_')[0][1:])
-        perv_idx = 0
-        
-        for idx, video_frame in enumerate(video_frames):  
-
-            if not (int(video_frame.split("_")[0][1:]) == scene_num):   
-                scene_num += 1 
-                video_path = os.path.join(path, video_name) 
-                scene_len = idx - perv_idx
-  
-                scene_frames = [os.path.join(video_path, 'frames', frame_name) for frame_name in video_frames[perv_idx:scene_len+perv_idx]]
-
-                virtual_camera(scene_frames)
-                        
-                perv_idx = idx
-
-            
-            elif(int(video_frames[0].split('_')[0][1:]) == int(video_frames[-1].split('_')[0][1:])):
-
-                video_path = os.path.join(path, video_name) 
-                scene_len = len(video_frames)
-                scene_frames = [os.path.join(video_path, 'frames', frame_name) for frame_name in video_frames[perv_idx:scene_len+perv_idx]]
-
-                virtual_camera(scene_frames)
-
-
-                break
-                
-        
-
-
-
-
-
-
-
